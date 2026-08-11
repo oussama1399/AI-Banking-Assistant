@@ -1,0 +1,6 @@
+customer_id,card_type,status,expiration_date,payment_limit,used_amount
+C1024,Gold,active,2027-05-31,3000,2400
+C1025,Platinum,active,2028-02-28,5000,4200
+C1026,Standard,inactive,2025-11-15,1000,0
+C1027,Gold,active,2027-08-30,3000,1800
+C1028,Platinum,active,2028-12-31,5000,3500

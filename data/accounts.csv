@@ -1,0 +1,6 @@
+customer_id,account_type,available_balance,currency,account_status
+C1024,current,2450.75,EUR,active
+C1025,savings,5200.00,EUR,active
+C1026,current,0.00,EUR,inactive
+C1027,checking,1890.30,EUR,active
+C1028,savings,3420.50,EUR,active

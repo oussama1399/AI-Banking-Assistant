@@ -1,0 +1,9 @@
+transaction_id,customer_id,date,label,amount,currency
+TX1001,C1024,2026-08-08,Supermarché,-45.30,EUR
+TX1002,C1024,2026-08-07,Restaurant,-28.50,EUR
+TX1003,C1024,2026-08-05,Retrait,-100.00,EUR
+TX1004,C1025,2026-08-09,Vente en ligne,-15.99,EUR
+TX1005,C1025,2026-08-06,Abonnement,-9.99,EUR
+TX1006,C1027,2026-08-10,École,-35.00,EUR
+TX1007,C1027,2026-08-08,Pharmacie,-22.45,EUR
+TX1008,C1028,2026-08-09,Voyage,-150.00,EUR

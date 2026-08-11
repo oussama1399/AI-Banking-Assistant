@@ -1,0 +1,6 @@
+customer_id,name,account_status,risk_profile
+C1024,Jean Martin,active,standard
+C1025,Marie Dubois,active,high
+C1026,Pierre Laurent,inactive,low
+C1027,Amélie Rousseau,active,standard
+C1028,Thomas Moreau,active,medium

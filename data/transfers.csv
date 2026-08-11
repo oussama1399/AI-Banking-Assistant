@@ -1,0 +1,6 @@
+transfer_id,amount,beneficiary,date,status,reason,customer_id
+TR4587,1500,M. Dupont,2026-08-09,rejected,insufficient_balance,C1024
+TR4588,2500,Mme Martin,2026-08-10,pending,,C1025
+TR4589,750,Entreprise ABC,2026-08-05,completed,,C1027
+TR4590,3000,Service Public,2026-08-08,rejected,invalid_beneficiary,C1028
+TR4591,1200,M. Durand,2026-08-06,completed,,C1024
