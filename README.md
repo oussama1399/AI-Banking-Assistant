@@ -233,12 +233,6 @@ You can view these metrics using:
 - Prometheus scraping
 - Grafana dashboards (if configured)
 
-## Testing
-
-Run tests with:
-```bash
-pytest
-```
 
 ## Features
 
