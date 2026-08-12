@@ -1,279 +1,166 @@
 """
-RAG (Retrieval-Augmented Generation) pipeline for AI Banking Assistant
+RAG (Retrieval-Augmented Generation) pipeline for AI Banking Assistant.
 """
 
-import os
-import glob
-from pathlib import Path
-from typing import List, Dict, Any
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.chains import RetrievalQA
-from langchain.llms import OpenAI  # Or any other LLM you prefer
-from langchain.prompts import PromptTemplate
-import logging
+from __future__ import annotations
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+import glob
+import logging
+import os
+from typing import Any, Dict, List, Optional
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+try:
+    # LangChain >=0.2 split Chroma into its own package.
+    from langchain_chroma import Chroma
+except ImportError:  # pragma: no cover
+    from langchain_community.vectorstores import Chroma  # type: ignore
+
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from sentence_transformers import SentenceTransformer
+
 logger = logging.getLogger(__name__)
 
+
 class BankingRAGPipeline:
-    """
-    RAG pipeline for banking documentation retrieval
+    """RAG pipeline for the banking knowledge base.
+
+    Builds a Chroma vector store from local markdown documents,
+    using a small HuggingFace embedding model. Provides a ``search``
+    method returning the top-k chunks for a query.
     """
 
-    def __init__(self, persist_directory: str = "./chroma_db"):
-        """
-        Initialize the RAG pipeline
-
-        Args:
-            persist_directory (str): Directory to store vector database
-        """
+    def __init__(
+        self,
+        persist_directory: str = "./chroma_db",
+        embedding_model: str = "all-MiniLM-L6-v2",
+    ) -> None:
         self.persist_directory = persist_directory
-        self.vector_store = None
+        self.embedding_model_name = embedding_model
+        self.vector_store: Optional[Chroma] = None
         self.retriever = None
-        self.qa_chain = None
-        self.embeddings_model = None
+        self.embeddings: Optional[HuggingFaceEmbeddings] = None
 
-    def load_documents(self, docs_path: str = "./data/knowledge_base/") -> List[Dict[str, Any]]:
-        """
-        Load all markdown documents from the knowledge base
+    # --- Document loading -------------------------------------------------
 
-        Args:
-            docs_path (str): Path to directory containing markdown files
-
-        Returns:
-            List of document dictionaries
-        """
-        try:
-            # Find all markdown files
-            markdown_files = glob.glob(os.path.join(docs_path, "*.md"))
-
-            documents = []
-
-            for file_path in markdown_files:
-                with open(file_path, 'r', encoding='utf-8') as f:
+    def load_documents(
+        self, docs_path: str = "./data/knowledge_base/"
+    ) -> List[Dict[str, Any]]:
+        markdown_files = sorted(glob.glob(os.path.join(docs_path, "*.md")))
+        documents: List[Dict[str, Any]] = []
+        for file_path in markdown_files:
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
-
-                # Extract filename without extension for metadata
-                filename = os.path.basename(file_path)
-                doc_dict = {
+            except OSError as e:
+                logger.warning("Cannot read %s: %s", file_path, e)
+                continue
+            documents.append(
+                {
                     "content": content,
                     "metadata": {
-                        "source": filename,
-                        "type": "banking_document"
-                    }
+                        "source": os.path.basename(file_path),
+                        "type": "banking_document",
+                    },
                 }
-                documents.append(doc_dict)
+            )
+        logger.info("Loaded %d documents from %s", len(documents), docs_path)
+        return documents
 
-            logger.info(f"Loaded {len(documents)} documents from {docs_path}")
-            return documents
-
-        except Exception as e:
-            logger.error(f"Error loading documents: {e}")
-            raise
+    # --- Vector store -----------------------------------------------------
 
     def create_vector_store(self, documents: List[Dict[str, Any]]) -> Chroma:
-        """
-        Create vector store from documents
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name=self.embedding_model_name,
+            model_kwargs={"device": "cpu"},
+        )
 
-        Args:
-            documents (List[Dict]): List of document dictionaries
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=50,
+            separators=["\n\n", "\n", " ", ""],
+        )
 
-        Returns:
-            Chroma vector store
-        """
-        try:
-            # Initialize embeddings
-            self.embeddings_model = HuggingFaceEmbeddings(
-                model_name="all-MiniLM-L6-v2"
-            )
+        texts: List[str] = []
+        metadatas: List[Dict[str, Any]] = []
+        for doc in documents:
+            chunks = text_splitter.split_text(doc["content"])
+            for chunk in chunks:
+                texts.append(chunk)
+                metadatas.append(doc["metadata"])
 
-            # Split documents into chunks
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=500,
-                chunk_overlap=50,
-                separators=["\n\n", "\n", " ", ""]
-            )
-
-            # Process all documents
-            texts = []
-            metadatas = []
-
-            for doc in documents:
-                chunks = text_splitter.split_text(doc["content"])
-                texts.extend(chunks)
-
-                # Add metadata to each chunk
-                for _ in chunks:
-                    metadatas.append(doc["metadata"])
-
-            # Create vector store
+        # Reuse the persisted DB if it already contains data, otherwise
+        # create a new one from the texts.
+        if texts:
             self.vector_store = Chroma.from_texts(
                 texts=texts,
                 metadatas=metadatas,
-                embedding=self.embeddings_model,
-                persist_directory=self.persist_directory
+                embedding=self.embeddings,
+                persist_directory=self.persist_directory,
+            )
+        else:
+            self.vector_store = Chroma(
+                embedding_function=self.embeddings,
+                persist_directory=self.persist_directory,
             )
 
-            logger.info("Vector store created successfully")
-            return self.vector_store
+        logger.info("Vector store created (chunks=%d).", len(texts))
+        return self.vector_store
 
-        except Exception as e:
-            logger.error(f"Error creating vector store: {e}")
-            raise
+    # --- Retriever --------------------------------------------------------
 
-    def setup_retriever(self):
-        """
-        Setup the retriever for document retrieval
-        """
+    def setup_retriever(self, k: int = 4) -> None:
         if self.vector_store is None:
-            raise ValueError("Vector store not initialized. Call create_vector_store first.")
-
-        # Create retriever with similarity search
+            raise ValueError(
+                "Vector store not initialized. Call create_vector_store first."
+            )
         self.retriever = self.vector_store.as_retriever(
             search_type="similarity",
-            search_kwargs={"k": 4}  # Return top 4 relevant documents
+            search_kwargs={"k": k},
         )
+        logger.info("Retriever ready (k=%d).", k)
 
-        logger.info("Retriever setup complete")
-
-    def setup_qa_chain(self):
-        """
-        Setup the QA chain for answering questions using retrieved documents
-        """
-        if self.retriever is None:
-            raise ValueError("Retriever not initialized. Call setup_retriever first.")
-
-        # Create a simple prompt template
-        prompt_template = """Utilisez les éléments de contexte suivants pour répondre de manière claire et concise à la question.
-        Si vous ne connaissez pas la réponse, dites-le simplement.
-
-        Contexte: {context}
-
-        Question: {question}
-
-        Réponse claire et concise:"""
-
-        prompt = PromptTemplate.from_template(prompt_template)
-
-        # Create the QA chain
-        self.qa_chain = RetrievalQA.from_chain_type(
-            llm=OpenAI(temperature=0.1),  # You can change this to your preferred LLM
-            chain_type="stuff",
-            retriever=self.retriever,
-            return_source_documents=True,
-            chain_type_kwargs={"prompt": prompt}
-        )
-
-        logger.info("QA chain setup complete")
+    # --- Search -----------------------------------------------------------
 
     def search(self, query: str) -> List[Dict[str, Any]]:
-        """
-        Search for relevant documents
-
-        Args:
-            query (str): Query to search for
-
-        Returns:
-            List of relevant documents
-        """
         if self.retriever is None:
-            raise ValueError("Retriever not initialized. Call setup_retriever first.")
-
-        try:
-            # Get relevant documents
-            docs = self.retriever.get_relevant_documents(query)
-
-            # Format results
-            results = []
-            for doc in docs:
-                results.append({
+            raise ValueError(
+                "Retriever not initialized. Call setup_retriever first."
+            )
+        docs = self.retriever.invoke(query)
+        results: List[Dict[str, Any]] = []
+        for doc in docs:
+            results.append(
+                {
                     "content": doc.page_content,
                     "metadata": doc.metadata,
-                    "score": getattr(doc, 'score', None)
-                })
+                    "score": getattr(doc, "score", None),
+                }
+            )
+        return results
 
-            return results
+    # --- End-to-end init --------------------------------------------------
 
-        except Exception as e:
-            logger.error(f"Error during search: {e}")
-            raise
+    def initialize_pipeline(self) -> None:
+        documents = self.load_documents()
+        if not documents:
+            logger.warning("No documents found; RAG will be empty.")
+        self.create_vector_store(documents)
+        self.setup_retriever()
 
-    def answer_question(self, question: str) -> Dict[str, Any]:
-        """
-        Answer a question using the RAG pipeline
 
-        Args:
-            question (str): Question to answer
+# --- Tiny smoke test -------------------------------------------------------
 
-        Returns:
-            Dictionary with answer and source documents
-        """
-        if self.qa_chain is None:
-            raise ValueError("QA chain not initialized. Call setup_qa_chain first.")
-
-        try:
-            # Get answer from QA chain
-            result = self.qa_chain({"query": question})
-
-            return {
-                "answer": result["result"],
-                "source_documents": [doc.page_content for doc in result["source_documents"]],
-                "metadata": [doc.metadata for doc in result["source_documents"]]
-            }
-
-        except Exception as e:
-            logger.error(f"Error answering question: {e}")
-            raise
-
-    def initialize_pipeline(self):
-        """
-        Complete initialization of the RAG pipeline
-        """
-        try:
-            # Load documents
-            documents = self.load_documents()
-
-            # Create vector store
-            self.create_vector_store(documents)
-
-            # Setup retriever
-            self.setup_retriever()
-
-            # Setup QA chain
-            self.setup_qa_chain()
-
-            logger.info("RAG pipeline initialized successfully")
-
-        except Exception as e:
-            logger.error(f"Error initializing RAG pipeline: {e}")
-            raise
-
-# Example usage function
-def test_rag_pipeline():
-    """Test the RAG pipeline with sample questions"""
-    try:
-        # Initialize pipeline
-        rag = BankingRAGPipeline()
-        rag.initialize_pipeline()
-
-        # Test questions
-        test_questions = [
-            "Quels sont les frais pour un virement international ?",
-            "Quel est le plafond de ma carte Gold ?",
-            "Comment ouvrir un compte bancaire ?"
-        ]
-
-        print("Testing RAG pipeline...")
-        for question in test_questions:
-            print(f"\nQuestion: {question}")
-            result = rag.answer_question(question)
-            print(f"Answer: {result['answer'][:200]}...")
-
-    except Exception as e:
-        print(f"Error in RAG test: {e}")
-
-if __name__ == "__main__":
-    test_rag_pipeline()
+if __name__ == "__main__":  # pragma: no cover
+    rag = BankingRAGPipeline()
+    rag.initialize_pipeline()
+    for q in [
+        "Quels sont les frais pour un virement international ?",
+        "Comment ouvrir un compte ?",
+        "Que faire en cas de perte de carte ?",
+    ]:
+        results = rag.search(q)
+        print(f"\nQ: {q}")
+        for r in results[:2]:
+            print(f"  - {r['metadata'].get('source')}: {r['content'][:120]}...")

@@ -4,6 +4,8 @@ AI Banking Assistant - Main FastAPI application
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import make_asgi_app
+
 from app.api.chat import router as chat_router
 from app.core.config import settings
 
@@ -22,6 +24,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount Prometheus metrics endpoint
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
 
 # Include routers
 app.include_router(chat_router, prefix=settings.API_V1_STR, tags=["chat"])

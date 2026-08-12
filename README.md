@@ -123,3 +123,11 @@ Follows the roadmap in roadmap.md with:
 3. Router development
 4. FastAPI endpoint integration
 5. Error handling and testing
+
+## Metrics & Monitoring
+The application exposes Prometheus-compatible metrics at `/metrics`. 
+You can view these metrics using:
+- `python simple_metrics.py` for console output
+- `streamlit run metrics_dashboard.py` for web interface
+
+This provides visibility into chat requests, response times, and system performance.
