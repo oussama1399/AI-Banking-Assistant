@@ -1,0 +1,302 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english,french]{babel}
+\usepackage{geometry}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tocloft}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{booktabs}
+
+% Page setup
+\geometry{margin=1in}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+% Custom section titles
+\titleformat{\section}{\large\bfseries}{}{0em}{1em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{1em}{}
+
+% Code formatting
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+\title{AI Banking Assistant\\ \large Système d'Assistance Bancaire Intelligente}
+\author{Présentation du Projet}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Résumé du Projet}
+
+L'AI Banking Assistant est un système intelligent de gestion bancaire qui combine la puissance des technologies d'intelligence artificielle avec des services bancaires spécifiques pour fournir des réponses personnalisées aux clients. Le système intègre un pipeline RAG (Retrieval-Augmented Generation) pour gérer les connaissances générales sur les procédures bancaires, ainsi qu'un ensemble d'outils spécialisés pour accéder aux données personnelles des clients.
+
+\section*{Architecture Système}
+
+\begin{center}
+\includegraphics[width=0.8\textwidth]{architecture.png}
+\end{center}
+
+\subsection*{Composants Principaux}
+
+\begin{itemize}
+    \item \textbf{API RESTful} : Point d'entrée principal \texttt{POST /chat}
+    \item \textbf{Orchestrator} : Coordonne les différents composants
+    \item \textbf{Router Intelligent} : Détermine la source de données appropriée
+    \item \textbf{Services Outils Bancaires} : 5 services spécialisés
+    \item \textbf{Service RAG} : Base de connaissances documentaire
+    \item \textbf{Service LLM} : Génération de réponse finale
+    \item \textbf{Monitoring} : Collecte de métriques et visualisation
+\end{itemize}
+
+\section*{Fonctionnalités Principales}
+
+\subsection*{1. API RESTful}
+\begin{itemize}
+    \item Point d'entrée principal : \texttt{POST /chat}
+    \item Format de requête :
+    \begin{verbatim}
+{
+  "customer_id": "C1024",
+  "message": "Quel est le statut de mon virement TR4587 ?"
+}
+    \end{verbatim}
+    \item Réponse structurée avec :
+    \begin{itemize}
+        \item Réponse textuelle en français
+        \item Source de l'information (tool, RAG ou tool+RAG)
+        \item Documents associés (pour le RAG)
+    \end{itemize}
+\end{itemize}
+
+\subsection*{2. Services Bancaires (5 outils)}
+\begin{enumerate}
+    \item \textbf{get\_account\_balance} : Récupération du solde disponible
+    \item \textbf{get\_transactions} : Historique des transactions
+    \item \textbf{get\_card\_info} : Informations sur les cartes bancaires
+    \item \textbf{get\_transfer\_status} : Statut des virements internationaux
+    \item \textbf{get\_customer\_info} : Données personnelles du client
+\end{enumerate}
+
+\subsection*{3. Base de Connaissances RAG}
+\begin{itemize}
+    \item Documents de documentation bancaire au format Markdown
+    \item Contenus couvrant :
+    \begin{itemize}
+        \item Frais et ouverture de compte
+        \item Politiques des cartes bancaires
+        \item Politique de fraude
+        \item Transferts internationaux
+        \item Informations sur les prêts
+        \item Procédures en cas de perte de carte
+        \item Politiques de transfert
+    \end{itemize}
+    \item Pipeline RAG avec :
+    \begin{itemize}
+        \item Traitement des documents
+        \item Partitionnement (chunking) de 500 caractères
+        \item Embeddings avec sentence transformers
+        \item Stockage vectoriel ChromaDB
+        \item Récupération de documents pertinents
+    \end{itemize}
+\end{itemize}
+
+\section*{Système de Routage Intelligent}
+
+\subsection*{Mécanisme de Routage}
+Le système utilise une approche hybride basée sur des règles pour déterminer la source de données appropriée :
+
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Type de Routage} & \textbf{Description} \\
+\hline
+Tool Only & Requêtes spécifiques aux données personnelles (solde, transactions, etc.) \\
+RAG Only & Questions générales sur les procédures bancaires \\
+Tool + RAG & Questions complexes nécessitant données personnelles et connaissances générales \\
+Clarification & Demande de paramètres manquants \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection*{Méthodologie de Routage}
+\begin{itemize}
+    \item Analyse des mots-clés dans le message utilisateur
+    \item Extraction d'identifiants spécifiques (virements, cartes)
+    \item Détection de contexte (requêtes sur les procédures)
+    \item Gestion des paramètres manquants via messages de clarification
+\end{itemize}
+
+\section*{Architecture Technique Détailée}
+
+\subsection*{Structure du Projet}
+\begin{lstlisting}[language=Python, caption={Structure principale du projet}]
+app/
+├── api/                 # API endpoints et routers
+├── core/                # Configuration et paramètres
+├── models/              # Modèles de données Pydantic
+├── services/            # Logique métier
+│   ├── orchestrator.py  # Coordination des composants
+│   ├── router.py        # Routage intelligent
+│   ├── tool_service.py  # Gestion des outils
+│   ├── rag_service.py   # Service RAG
+│   ├── llm_service.py   # Service LLM
+│   └── prompts.py       # Prompts pour LLM
+├── tools/               # Implémentation des outils bancaires
+├── rag/                 # Pipeline RAG
+└── monitoring/          # Monitoring et métriques
+\end{lstlisting}
+
+\subsection*{Flux de Traitement}
+\begin{enumerate}
+    \item L'utilisateur envoie une requête à l'endpoint \texttt{/chat}
+    \item Le routeur analyse le message et détermine la source appropriée
+    \item Si nécessaire, les outils bancaires sont appelés pour récupérer les données personnelles
+    \item Le service RAG récupère les documents pertinents depuis la base de connaissances
+    \item Le LLM combine toutes les informations pour générer une réponse finale
+    \item La réponse est retournée à l'utilisateur avec les métadonnées appropriées
+\end{enumerate}
+
+\section*{Monitoring et Observabilité}
+
+\subsection*{Métriques Collectées}
+\begin{itemize}
+    \item Taux de requêtes et latences par type de route
+    \item Taux de succès/échec des appels d'outils
+    \item Ratio de cache hit/miss
+    \item Résultats de vérification des faits
+    \item Scores de qualité RAG (fidélité, pertinence, précision)
+\end{itemize}
+
+\subsection*{Outils d'Observabilité}
+\begin{itemize}
+    \item \textbf{Prometheus} : Collecte des métriques personnalisées
+    \item \textbf{Grafana} : Visualisation et alerting
+    \item \textbf{RAGAS} : Évaluation de la qualité du RAG
+    \item \textbf{Endpoint /metrics} : Exposition des métriques Prometheus
+\end{itemize}
+
+\section*{Sécurité et Gestion des Erreurs}
+
+\subsection*{Gestion des Erreurs}
+\begin{itemize}
+    \item Traitement des données manquantes
+    \item Gestion des erreurs d'API avec messages clairs
+    \item Retours utilisateur explicites en français
+    \item Logs détaillés pour le diagnostic
+\end{itemize}
+
+\subsection*{Sécurité}
+\begin{itemize}
+    \item Middleware CORS configuré
+    \item Validation des entrées via Pydantic
+    \item Gestion des identifiants de clients
+    \item Protection contre les attaques par injection
+\end{itemize}
+
+\section*{Exemples d'Utilisation}
+
+\subsection*{Cas d'Utilisation 1 : Consultation du Solde}
+\begin{verbatim}
+Requête :
+{
+  "customer_id": "C1024",
+  "message": "Quel est mon solde ?"
+}
+
+Réponse :
+{
+  "answer": "Votre solde disponible est de 5 432,78 € sur votre compte courant.",
+  "source": "get_account_balance"
+}
+\end{verbatim}
+
+\subsection*{Cas d'Utilisation 2 : Statut d'un Virement}
+\begin{verbatim}
+Requête :
+{
+  "customer_id": "C1024",
+  "message": "Quel est le statut de mon virement TR4587 ?"
+}
+
+Réponse :
+{
+  "answer": "Le virement TR4587 a été effectué avec succès. Montant : 1 200 € vers l'entreprise XYZ.",
+  "source": "get_transfer_status"
+}
+\end{verbatim}
+
+\subsection*{Cas d'Utilisation 3 : Procédure de Perte de Carte}
+\begin{verbatim}
+Requête :
+{
+  "customer_id": "C1024",
+  "message": "Que dois-je faire en cas de perte de ma carte ?"
+}
+
+Réponse :
+{
+  "answer": "En cas de perte de votre carte, vous devez immédiatement contacter notre service client pour la bloquer. Une fois bloquée, une nouvelle carte sera envoyée à votre adresse dans les 3 jours ouvrables.",
+  "source": "get_card_info+RAG",
+  "documents": ["card_policies.md", "fraud_policy.md"]
+}
+\end{verbatim}
+
+\section*{Performance et Évolutivité}
+
+\subsection*{Caractéristiques Techniques}
+\begin{itemize}
+    \item Architecture basée sur FastAPI (performance élevée)
+    \item Gestion asynchrone des requêtes
+    \item Lazy initialization pour les composants lourds
+    \item Mise en cache des résultats
+    \item Support de la scalabilité horizontale
+\end{itemize}
+
+\subsection*{Scalabilité}
+\begin{itemize}
+    \item Composants modulaires et interchangeables
+    \item Configuration facile pour les nouveaux outils
+    \item Métriques précises pour le monitoring
+    \item Architecture distribuée possible
+\end{itemize}
+
+\section*{Conclusion}
+
+L'AI Banking Assistant constitue un système bancaire intelligent et robuste qui combine l'efficacité des outils spécifiques avec la richesse des connaissances générales fournies par le RAG. L'architecture hybride permet de fournir des réponses précises, personnalisées et contextuelles aux utilisateurs tout en maintenant une forte sécurité et une excellente observabilité.
+
+Le système est conçu pour être extensible, facile à maintenir et prêt à intégrer d'autres services bancaires ou outils dans le futur.
+
+\end{document}
