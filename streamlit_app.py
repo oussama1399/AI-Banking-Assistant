@@ -60,7 +60,7 @@ with st.sidebar:
     
     api_url = st.text_input(
         "API Base URL",
-        value="http://localhost:8000/api/v1",
+        value="http://localhost:8085/api/v1",
         help="URL du serveur backend FastAPI/Flask",
     )
     

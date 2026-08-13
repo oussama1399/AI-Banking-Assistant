@@ -7,7 +7,7 @@ AI Banking Assistant is an intelligent chatbot system that provides banking info
 ## Architecture
 
 ```
-POST /chat
+POST /api/v1/chat
    |
    v
 Orchestrator
@@ -134,9 +134,13 @@ pip install -r requirements.txt
 python run.py
 ```
 
+The application will start on port 8090 by default.
+
+The application will start on port 8081 by default.
+
 ## API Endpoints
 
-### POST /chat
+### POST /api/v1/chat
 Main chat endpoint for banking assistant.
 
 **Request Body:**
@@ -209,6 +213,15 @@ Response:
 }
 ```
 
+## Streamlit Frontend
+
+The Streamlit application is configured to connect to the backend on port 8090 by default. When running the Streamlit app:
+```bash
+streamlit run streamlit_app.py
+```
+
+The frontend will automatically connect to `http://localhost:8090/api/v1/chat`
+
 ## Implementation Approach
 
 Follows the roadmap with:
@@ -232,6 +245,8 @@ You can view these metrics using:
 - Direct access to `/metrics` endpoint
 - Prometheus scraping
 - Grafana dashboards (if configured)
+
+The application runs on port 8090, which is configured in the monitoring system.
 
 
 ## Features
@@ -284,3 +299,12 @@ The application requires the following dependencies (from requirements.txt):
 - Lazy initialization of heavy components
 - Caching capabilities
 - Prometheus-based performance monitoring
+
+## Port Configuration
+
+The application is configured to run on port 8090 by default, which resolves conflicts with previous ports (8080 and 8081). This ensures consistent startup behavior across different environments.
+
+To change the port:
+1. Update `run.py` file to modify the port parameter
+2. Update `streamlit_app.py` to change the API URL 
+3. Update `prometheus.yml` to scrape from the new port
