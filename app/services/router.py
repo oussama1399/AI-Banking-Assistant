@@ -70,7 +70,7 @@ TRANSACTIONS_KEYWORDS: Set[str] = {
 }
 CARD_KEYWORDS: Set[str] = {
     "carte", "cb", "visa", "mastercard",
-    "ma carte",
+    "ma carte","carte bleue", "carte bleue", "ma carte bleue",
 }
 CUSTOMER_KEYWORDS: Set[str] = {
     "mon profil", "mes informations", "mes infos",

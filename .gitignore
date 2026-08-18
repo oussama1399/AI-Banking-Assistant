@@ -17,7 +17,7 @@ venv/
 pip-log.txt
 pip-delete-this-directory.txt
 MANIFEST
-
+.claude/
 # MyPy
 .mypy_cache/
 .dmypy.json
